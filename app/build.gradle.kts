@@ -1,44 +1,47 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.serialization")
-    id("com.google.dagger.hilt.android")
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
-// Lê local.properties para expor API_BASE_URL e MAPS_API_KEY ao app,
-// sem precisar deixar esses valores hardcoded no código-fonte.
+// URLs e chaves vêm de local.properties (ou variáveis de ambiente), nunca do código.
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
-    if (file.exists()) {
-        load(FileInputStream(file))
-    }
+    if (file.exists()) FileInputStream(file).use { load(it) }
 }
 
 fun readLocalProperty(key: String, default: String): String =
-    (localProperties.getProperty(key) ?: System.getenv(key) ?: default)
+    localProperties.getProperty(key) ?: System.getenv(key) ?: default
+
+val apiBaseUrl = readLocalProperty("API_BASE_URL", "http://10.0.2.2:8000/api/")
+
+// Padrão: mesmo host da API, trocando http(s) por ws(s) e /api/ por /ws/stream/.
+val wsUrl = readLocalProperty(
+    "WS_URL",
+    apiBaseUrl.replaceFirst(Regex("^http"), "ws").replace(Regex("api/?$"), "ws/stream/"),
+)
 
 android {
-    namespace = "com.rotacerta.driver"
-    compileSdk = 34
+    namespace = "com.rotacerta.mobile"
+    compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.rotacerta.driver"
+        applicationId = "com.rotacerta.mobile"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        targetSdk = 36
+        versionCode = 2
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val apiBaseUrl = readLocalProperty("API_BASE_URL", "http://10.0.2.2:8000/api/")
-        val mapsApiKey = readLocalProperty("MAPS_API_KEY", "")
-
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "WS_URL", "\"$wsUrl\"")
+        manifestPlaceholders["MAPS_API_KEY"] = readLocalProperty("MAPS_API_KEY", "")
     }
 
     buildTypes {
@@ -49,9 +52,6 @@ android {
                 "proguard-rules.pro",
             )
         }
-        debug {
-            isMinifyEnabled = false
-        }
     }
 
     compileOptions {
@@ -59,17 +59,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     packaging {
@@ -77,53 +69,50 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
-    // Core / Compose
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
-    implementation("androidx.activity:activity-compose:1.9.1")
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.process)
+    implementation(libs.androidx.lifecycle.service)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.datastore.preferences)
 
-    implementation(platform("androidx.compose:compose-bom:2024.10.01"))
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.graphics)
+    implementation(libs.compose.ui.tooling.preview)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
+    debugImplementation(libs.compose.ui.tooling)
 
-    // Navigation
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
 
-    // Hilt (injeção de dependência)
-    implementation("com.google.dagger:hilt-android:2.51.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.51.1")
-    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.kotlinx.serialization.json)
 
-    // Rede: Retrofit + OkHttp + kotlinx.serialization
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:1.0.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.kotlinx.serialization)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
 
-    // DataStore (armazenamento seguro de tokens)
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
+    implementation(libs.maps.compose)
 
-    // Google Maps (tela de navegação)
-    implementation("com.google.android.gms:play-services-maps:19.0.0")
-    implementation("com.google.android.gms:play-services-location:21.3.0")
-    implementation("com.google.maps.android:maps-compose:4.4.1")
-
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:2024.10.01"))
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.okhttp.mockwebserver)
+    androidTestImplementation(libs.androidx.junit)
 }

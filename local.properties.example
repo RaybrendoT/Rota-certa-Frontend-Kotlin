@@ -1,11 +1,12 @@
 # Copie este arquivo para "local.properties" (na raiz do projeto) e ajuste os valores.
 # O Android Studio adiciona automaticamente a linha "sdk.dir=..." neste arquivo.
 
-# URL base da API Django. Use 10.0.2.2 para acessar o "localhost" da sua máquina
-# a partir do emulador Android. Para dispositivo físico, use o IP da sua máquina
-# na rede local (ex: 192.168.0.10) ou uma URL pública (ngrok, servidor deployado).
+# URL base da API Django. 10.0.2.2 é o "localhost" da sua máquina visto do emulador.
+# Celular físico: use o IP da sua máquina na rede local (ex.: http://192.168.0.10:8000/api/).
 API_BASE_URL=http://10.0.2.2:8000/api/
 
-# Chave de API do Google Maps (Maps SDK for Android habilitada no Google Cloud Console).
-# Necessária apenas para a tela de navegação (mapa + rota traçada).
+# WebSocket do tempo real. Opcional: por padrão usa o host da API em ws://<host>/ws/stream/.
+# WS_URL=ws://10.0.2.2:8000/ws/stream/
+
+# Chave do Google Maps (Maps SDK for Android no Google Cloud Console). Sem ela o mapa fica cinza.
 MAPS_API_KEY=SUA_CHAVE_AQUI

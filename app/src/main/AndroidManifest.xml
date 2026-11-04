@@ -5,19 +5,23 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Avisos da rota (Android 13+ pede ao usuário). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- GPS do motorista com a tela desligada durante a rota. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
+    <!-- usesCleartextTraffic: permite http:// e ws:// para o backend local (10.0.2.2 no emulador).
+         Em produção, use https/wss e remova. -->
     <application
         android:name=".RotaCertaApp"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.RotaCertaDriver"
+        android:theme="@style/Theme.RotaCerta"
         android:usesCleartextTraffic="true">
-
-        <!-- usesCleartextTraffic habilita http:// para facilitar testes locais
-             (ex: 10.0.2.2 no emulador). Remova/ajuste em produção com HTTPS. -->
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
@@ -26,12 +30,18 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.RotaCertaDriver">
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".feature.driver.tracking.LocationTrackingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
     </application>
 
 </manifest>

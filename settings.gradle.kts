@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "RotaCertaDriver"
+rootProject.name = "RotaCerta"
 include(":app")

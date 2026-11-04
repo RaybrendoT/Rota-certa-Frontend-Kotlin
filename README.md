@@ -1,119 +1,87 @@
-# Rota Certa — App do Motorista (Kotlin / Android)
+# Rota Certa — App Android (motorista + colaborador)
 
-App nativo Android, em **Kotlin + Jetpack Compose**, para o **motorista** do sistema
-Rota Certa. Consome diretamente a API já existente em `Rota-certa-Backend-Django`,
-reaproveitando os endpoints que o próprio backend já expõe para app mobile de
-motorista (`/routes/my-routes/`, `/routes/{id}/driver-detail/`,
-`/routes/{id}/navigation/`, `/routes/{id}/events/`, `/route-events/`,
-`/route-passengers/{id}/`).
+App nativo em **Kotlin + Jetpack Compose** do sistema Rota Certa. Substitui o antigo
+app Flutter (`rota_em_flutter`) e unifica os dois perfis de campo:
 
-> O painel Angular já existente continua sendo o back-office (admin cadastra
-> empresas, rotas, funcionários, veículos). Este app é o complemento do lado do
-> motorista, em campo.
+| Perfil | Quem | O que faz no app |
+|--------|------|------------------|
+| **Motorista** | pessoa `DRIVER` | Rotas do seu veículo, paradas, passageiros, eventos, navegação; envia o GPS do ônibus durante a rota |
+| **Colaborador** | pessoa `EMPLOYEE` | Mapa com seu ponto e o ônibus ao vivo, confirmação de presença, agenda, avisos |
+
+O painel Angular continua sendo o back-office (cadastros). Plano completo da migração em
+[`docs/PLANO_DE_DESENVOLVIMENTO.md`](docs/PLANO_DE_DESENVOLVIMENTO.md).
 
 ## Funcionalidades
 
-- **Login** com e-mail/senha (JWT), bloqueando acesso de quem não é `DRIVER`.
-- **Troca de senha obrigatória** no primeiro acesso (`must_change_password`).
-- **Esqueci minha senha** (solicitação de código + redefinição).
-- **Minhas rotas**: lista as rotas do veículo/motorista logado.
-- **Detalhe da rota**: timeline de paradas, lista de passageiros com
-  atualização de status de embarque (pendente/embarcado/ausente), registro de
-  eventos (partida, chegada, parada, atraso, incidente) com geolocalização
-  automática, e histórico de eventos.
-- **Navegação**: mapa com o traçado da rota (polyline do Google Routes API),
-  marcadores de origem/paradas/destino, instrução e ETA/distância.
-- **Renovação automática de sessão**: ao expirar o access token (1h), o app
-  renova sozinho usando o refresh token (7 dias), sem derrubar o motorista.
+- **Login único**: a área (motorista ou colaborador) é escolhida pelo tipo da pessoa no backend.
+- **Troca de senha obrigatória** no primeiro acesso e **recuperação de senha** em 3 passos (código + nova senha com medidor de força).
+- **Tempo real (WebSocket `/ws/stream/`)**: avisos, posição do ônibus, status da rota e confirmações de embarque chegam sem polling.
+  Com o app em segundo plano, avisos viram notificação do Android.
+- **Motorista**: "Iniciar rota" registra a partida e liga um *foreground service* que envia o GPS a cada ~5 s;
+  "Finalizar rota" registra a chegada e desliga. Também registra parada, atraso e incidente com a localização atual,
+  e marca o embarque dos passageiros (a lista atualiza ao vivo quando o colaborador responde).
+- **Colaborador**: mapa com ponto de embarque e ônibus ao vivo, distância e chegada estimada, "Vou embarcar / Não irei hoje",
+  agenda com horários da empresa, avisos e perfil.
+- Sessão renovada automaticamente (refresh token) no HTTP e no WebSocket; sessão expirada volta ao login.
 
 ## Arquitetura
 
 ```
-app/src/main/java/com/rotacerta/driver/
-├── data/
-│   ├── remote/          # Retrofit APIs, DTOs, interceptor de auth, refresh automático
-│   ├── local/            # DataStore (tokens e sessão)
-│   └── repository/       # AuthRepository, RouteRepository
-├── di/                    # Módulos Hilt (rede, contexto)
-├── ui/
-│   ├── login/ changepassword/ forgotpassword/
-│   ├── myroutes/ routedetail/ navigationmap/
-│   ├── session/           # observa a sessão e decide a tela inicial
-│   ├── navigation/        # NavHost + rotas (Navigation Compose)
-│   └── theme/
-└── util/                  # UiState, parser de erros DRF, decodificador de polyline, GPS
+com.rotacerta.mobile/
+├── core/
+│   ├── designsystem/   tema escuro da marca, componentes, marcadores de mapa
+│   ├── network/        ApiResult, interceptor, renovação de token (HTTP + WebSocket)
+│   ├── realtime/       RealtimeClient (OkHttp WebSocket, backoff) e parser de eventos
+│   ├── session/        SessionStore (DataStore) com o perfil do usuário
+│   ├── location/       GPS (Fused Location) e cálculo de distância/ETA
+│   ├── notification/   notificações do sistema
+│   └── util/           UiState, formatadores, regras de senha, polyline
+├── data/               APIs Retrofit, DTOs e repositórios (Auth, Driver, Collaborator, Notification)
+├── di/                 módulos Hilt
+├── feature/
+│   ├── auth/           splash, login, recuperação e troca de senha
+│   ├── driver/         rotas, detalhe (roteiro/passageiros/eventos), navegação, tracking (serviço GPS)
+│   ├── collaborator/   mapa, agenda e home do colaborador
+│   ├── notifications/  aba Avisos (compartilhada)
+│   ├── profile/        aba Perfil (compartilhada)
+│   └── home/           scaffold com barra inferior
+└── navigation/         raiz por estado da sessão + rotas tipadas
 ```
 
-MVVM simples: `ViewModel` com `StateFlow<UiState<T>>`, `Repository` traduzindo
-chamadas Retrofit em `DataResult`/`AuthResult`, sem camada de domínio extra
-(o projeto é pequeno o suficiente para não precisar de use cases separados).
+MVVM: `ViewModel` com `StateFlow`, repositórios devolvendo `ApiResult`. Os repositórios do colaborador
+e de avisos são a fonte única de dados das abas e aplicam os eventos do WebSocket.
 
-## Configuração antes de rodar
+## Requisitos
 
-### 1. Backend
+- Android Studio 2026.2 ou mais recente (o projeto usa AGP 9.4 e Gradle 9.8; o JDK embutido do Studio serve).
+- minSdk 26 · targetSdk 36 · compileSdk 37.
+- Backend Django rodando com Channels (veja abaixo).
 
-Suba o Django normalmente (`python manage.py runserver 0.0.0.0:8000`).
-Para o app conseguir calcular a tela de **Navegação**, configure
-`GOOGLE_MAPS_API_KEY` no `.env` do backend (Google Routes API habilitada).
+## Configuração
 
-### 2. `local.properties`
+1. Copie `local.properties.example` para `local.properties` e ajuste:
+   - `API_BASE_URL` — emulador: `http://10.0.2.2:8000/api/`; celular na mesma rede: `http://SEU_IP:8000/api/`.
+   - `WS_URL` — opcional; por padrão vira `ws://<mesmo host>/ws/stream/`.
+   - `MAPS_API_KEY` — chave do **Maps SDK for Android** (sem ela o mapa fica cinza, o resto funciona).
+2. Suba o backend: na raiz de `Rota Certa 2026 (ed. final)`, `docker compose up --build`
+   (Postgres, Redis e o backend em daphne). Para dados de teste:
+   `docker compose exec backend python manage.py seed_manaus_demo`.
+3. Abra esta pasta no Android Studio, deixe o Gradle sincronizar e rode no emulador.
 
-Copie o exemplo e ajuste:
+Para testar o tempo real, use dois aparelhos (ou emulador + celular): um logado como motorista e outro como
+colaborador da mesma rota. No emulador do motorista, simule o trajeto em *Extended controls → Location → Routes*.
+
+## Testes
 
 ```bash
-cp local.properties.example local.properties
+./gradlew testDebugUnitTest
 ```
 
-- `API_BASE_URL`:
-  - Emulador Android: `http://10.0.2.2:8000/api/` (padrão já configurado)
-  - Dispositivo físico na mesma rede: `http://SEU_IP_LOCAL:8000/api/`
-  - Servidor remoto: a URL pública, de preferência com HTTPS
-- `MAPS_API_KEY`: chave do **Maps SDK for Android** (Google Cloud Console).
-  Pode ser diferente da chave usada pelo backend (Routes API), mas ambas
-  precisam existir no mesmo projeto do Google Cloud, com faturamento ativo.
+Cobrem o parser do WebSocket, backoff de reconexão, distância/ETA, regras de senha, formatadores,
+erros do DRF, decodificação de polyline e regras de estado das telas.
 
-O Android Studio adiciona automaticamente a linha `sdk.dir=...` neste mesmo
-arquivo ao abrir o projeto — não é preciso mexer nela.
+## Limitações conhecidas
 
-### 3. Abrir e rodar
-
-Abra a pasta `RotaCertaDriver` no Android Studio (Koala ou mais recente) e
-deixe o Gradle sincronizar. O projeto usa **minSdk 26 / targetSdk 34**.
-
-### 4. Criar um usuário motorista para testar
-
-O login só é aceito para pessoas do tipo `DRIVER` (regra aplicada no app,
-não no backend — o backend aceita qualquer `Person` com conta de acesso).
-No Django admin ou via shell, garanta que existe:
-
-- Uma `Person` com `type="DRIVER"` e `license_number` preenchido;
-- Uma `AccessAccount` vinculada a essa pessoa, com senha definida;
-- Idealmente, um `Vehicle` com `driver` apontando para essa pessoa e uma
-  `Route` com `vehicle` apontando para esse veículo — senão "Minhas rotas"
-  aparecerá vazio (é esperado: a query de `my-routes` filtra por
-  `vehicle__driver=person`).
-
-## Decisões técnicas relevantes
-
-- **Retrofit + kotlinx.serialization**, com `isLenient = true`: o Django REST
-  Framework serializa `DecimalField` (latitude/longitude) como **string**
-  por padrão (`COERCE_DECIMAL_TO_STRING`). O modo lenient do
-  kotlinx.serialization permite decodificar esses números "entre aspas"
-  direto em campos `Double`, sem precisar de serializers customizados.
-- **OkHttp `Authenticator`** (não apenas interceptor) para renovar o token:
-  intercepta qualquer 401, chama `POST /auth/refresh/` uma única vez e repete
-  a requisição original — se falhar, limpa a sessão e a UI volta ao login
-  sozinha (a tela observa `SessionStore.sessionFlow`).
-- **DataStore** em vez de `SharedPreferences` para os tokens (API assíncrona,
-  recomendada atualmente pelo Android).
-- App **não implementa cadastro de empresas/rotas/veículos/funcionários** —
-  isso é responsabilidade do painel Angular já existente. Manter essa
-  separação evita duplicar regras de negócio (CNPJ, e-mail automático por
-  domínio da empresa, TPH de `Person`, etc.) em dois lugares.
-
-## Possíveis próximos passos
-
-- Testes instrumentados de `ViewModel` (os repositórios já retornam tipos
-  seláveis fáceis de mockar).
-- Notificações push quando o admin reatribuir a rota do motorista.
-- Modo offline básico (cache do último `driver-detail` carregado).
+- Com o app **fechado**, o colaborador não recebe avisos (WebSocket exige o processo vivo). Push com app fechado
+  exige FCM — próximo passo sugerido. O motorista em rota não é afetado (o serviço de GPS mantém o app vivo).
+- O `boarding_status` não volta a "pendente" sozinho a cada dia; isso é regra do backend a definir.

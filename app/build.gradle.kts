@@ -18,13 +18,24 @@ val localProperties = Properties().apply {
 fun readLocalProperty(key: String, default: String): String =
     localProperties.getProperty(key) ?: System.getenv(key) ?: default
 
-val apiBaseUrl = readLocalProperty("API_BASE_URL", "http://10.0.2.2:8000/api/")
+// Dois ambientes (product flavors):
+//   local → backend na sua máquina/rede (API_BASE_URL do local.properties), aceita http/ws;
+//   prod  → servidor da EC2 (PROD_API_BASE_URL, padrão https://rotacerta-api.rest/api/), só https/wss.
+val localApiBaseUrl = readLocalProperty("API_BASE_URL", "http://10.0.2.2:8000/api/")
+val prodApiBaseUrl = readLocalProperty("PROD_API_BASE_URL", "https://rotacerta-api.rest/api/")
 
 // Padrão: mesmo host da API, trocando http(s) por ws(s) e /api/ por /ws/stream/.
-val wsUrl = readLocalProperty(
-    "WS_URL",
+fun wsUrlFor(apiBaseUrl: String, key: String): String = readLocalProperty(
+    key,
     apiBaseUrl.replaceFirst(Regex("^http"), "ws").replace(Regex("api/?$"), "ws/stream/"),
 )
+
+val localWsUrl = wsUrlFor(localApiBaseUrl, "WS_URL")
+val prodWsUrl = wsUrlFor(prodApiBaseUrl, "PROD_WS_URL")
+
+require(prodApiBaseUrl.startsWith("https://") && prodWsUrl.startsWith("wss://")) {
+    "O flavor prod só aceita https/wss (PROD_API_BASE_URL=$prodApiBaseUrl, PROD_WS_URL=$prodWsUrl)."
+}
 
 android {
     namespace = "com.rotacerta.mobile"
@@ -40,9 +51,28 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
-        buildConfigField("String", "WS_URL", "\"$wsUrl\"")
         manifestPlaceholders["MAPS_API_KEY"] = readLocalProperty("MAPS_API_KEY", "")
+    }
+
+    // Mesmo applicationId nos dois (a chave do Maps é restrita ao pacote): instalar um substitui o outro.
+    flavorDimensions += "ambiente"
+    productFlavors {
+        create("prod") {
+            dimension = "ambiente"
+            isDefault = true
+            buildConfigField("String", "API_BASE_URL", "\"$prodApiBaseUrl\"")
+            buildConfigField("String", "WS_URL", "\"$prodWsUrl\"")
+            manifestPlaceholders["usesCleartextTraffic"] = "false"
+            resValue("string", "app_name", "Rota Certa")
+        }
+        create("local") {
+            dimension = "ambiente"
+            versionNameSuffix = "-local"
+            buildConfigField("String", "API_BASE_URL", "\"$localApiBaseUrl\"")
+            buildConfigField("String", "WS_URL", "\"$localWsUrl\"")
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
+            resValue("string", "app_name", "Rota Certa (local)")
+        }
     }
 
     // Assinatura do release: keystore e senhas vêm de local.properties ou do CI (secrets); sem elas,
@@ -78,6 +108,7 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
     }
 
     packaging {

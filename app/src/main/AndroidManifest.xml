@@ -11,8 +11,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
-    <!-- usesCleartextTraffic: permite http:// e ws:// para o backend local (10.0.2.2 no emulador).
-         Em produção, use https/wss e remova. -->
+    <!-- usesCleartextTraffic vem do flavor: "true" no local (http/ws para 10.0.2.2 ou IP da rede),
+         "false" no prod (servidor da EC2 só por https/wss). -->
     <application
         android:name=".RotaCertaApp"
         android:allowBackup="false"
@@ -21,7 +21,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.RotaCerta"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="${usesCleartextTraffic}">
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"

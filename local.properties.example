@@ -1,12 +1,21 @@
 # Copie este arquivo para "local.properties" (na raiz do projeto) e ajuste os valores.
 # O Android Studio adiciona automaticamente a linha "sdk.dir=..." neste arquivo.
 
-# URL base da API Django. 10.0.2.2 é o "localhost" da sua máquina visto do emulador.
-# Celular físico: use o IP da sua máquina na rede local (ex.: http://192.168.0.10:8000/api/).
+# O app tem dois flavors (Build Variants no Android Studio):
+#   prod  → servidor da EC2 (padrão; https://rotacerta-api.rest/api/, só https/wss);
+#   local → backend na sua máquina, com a URL abaixo.
+#
+# URL base da API Django para o flavor local. 10.0.2.2 é o "localhost" da sua máquina visto do emulador.
+# Celular físico: use o IP da sua máquina na rede local (ex.: http://192.168.0.10:8000/api/)
+# ou, pelo cabo USB, http://127.0.0.1:8000/api/ com "adb reverse tcp:8000 tcp:8000".
 API_BASE_URL=http://10.0.2.2:8000/api/
 
 # WebSocket do tempo real. Opcional: por padrão usa o host da API em ws://<host>/ws/stream/.
 # WS_URL=ws://10.0.2.2:8000/ws/stream/
+
+# Produção (flavor prod). Opcional: só mude se o servidor trocar de domínio.
+# PROD_API_BASE_URL=https://rotacerta-api.rest/api/
+# PROD_WS_URL=wss://rotacerta-api.rest/ws/stream/
 
 # Chave do Google Maps (Maps SDK for Android no Google Cloud Console). Sem ela o mapa fica cinza.
 MAPS_API_KEY=SUA_CHAVE_AQUI

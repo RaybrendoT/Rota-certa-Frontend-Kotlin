@@ -101,14 +101,25 @@ com.rotacerta.mobile/
 
 ## Configuração
 
+O app tem dois **flavors** (Android Studio → *Build Variants*):
+
+| Variante | Servidor | Rede |
+|---|---|---|
+| `prodDebug` / `prodRelease` (padrão) | EC2, `https://rotacerta-api.rest/api/` | só https/wss |
+| `localDebug` | `API_BASE_URL` do `local.properties` | aceita http/ws |
+
+Os dois usam o mesmo pacote, então instalar um substitui o outro (faça login de novo ao trocar).
+Para instalar o app de produção no celular pelo cabo: `./gradlew installProdDebug`.
+
 1. Copie `local.properties.example` para `local.properties` e ajuste:
-   - `API_BASE_URL`: no emulador, `http://10.0.2.2:8000/api/`; em celular na mesma rede, `http://SEU_IP:8000/api/`.
+   - `API_BASE_URL` (flavor local): no emulador, `http://10.0.2.2:8000/api/`; em celular na mesma rede, `http://SEU_IP:8000/api/`.
    - `WS_URL` (opcional): por padrão vira `ws://<mesmo host>/ws/stream/`.
    - `MAPS_API_KEY`: chave do **Maps SDK for Android**. Sem ela, o mapa fica cinza, mas o restante funciona.
 2. Suba o backend na raiz de `Rota Certa 2026 (ed. final)`: `docker compose up --build`
    (Postgres, Redis e o backend em daphne). Para dados de demonstração:
    `docker compose exec backend python manage.py seed_manaus_demo`.
-3. Abra esta pasta no Android Studio, aguarde o Gradle sincronizar e rode no emulador.
+3. Abra esta pasta no Android Studio, aguarde o Gradle sincronizar, escolha `localDebug` em *Build Variants*
+   e rode no emulador.
 
 **Testando o tempo real:** use dois aparelhos (ou emulador + celular), um logado como motorista e outro como
 colaborador da mesma rota. No emulador do motorista, simule o trajeto em *Extended controls → Location → Routes*.
@@ -116,7 +127,7 @@ colaborador da mesma rota. No emulador do motorista, simule o trajeto em *Extend
 ## Testes
 
 ```bash
-./gradlew testDebugUnitTest
+./gradlew testProdDebugUnitTest
 ```
 
 Cobrem o parser do WebSocket, o backoff de reconexão, distância/ETA, regras de senha, formatadores,

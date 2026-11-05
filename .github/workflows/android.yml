@@ -1,6 +1,6 @@
 # CI/CD do app Android (Kotlin/Compose).
 #
-#   PR e push → testes unitários e APK de debug (para baixar em "Artifacts" da execução).
+#   PR e push → testes unitários e APK de debug do flavor prod (servidor da EC2), em "Artifacts".
 #   tag v*    → APK e AAB de release assinados, apontando para a produção, publicados como
 #               Release no GitHub (ex.: git tag v2.1.0 && git push origin v2.1.0).
 #
@@ -8,7 +8,8 @@
 #   MAPS_API_KEY                     chave do Maps SDK for Android;
 #   KEYSTORE_BASE64                  keystore de release em base64 (base64 -w0 release.jks);
 #   KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD.
-# Variável opcional (aba Variables): API_BASE_URL (padrão https://rotacerta-api.rest/api/).
+# Variável opcional (aba Variables): API_BASE_URL da produção (padrão https://rotacerta-api.rest/api/),
+# usada pelo flavor prod como PROD_API_BASE_URL.
 name: Android
 
 on:
@@ -23,7 +24,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  API_BASE_URL: ${{ vars.API_BASE_URL || 'https://rotacerta-api.rest/api/' }}
+  PROD_API_BASE_URL: ${{ vars.API_BASE_URL || 'https://rotacerta-api.rest/api/' }}
   MAPS_API_KEY: ${{ secrets.MAPS_API_KEY }}
 
 jobs:
@@ -41,7 +42,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Testes unitários e build
-        run: ./gradlew testDebugUnitTest assembleDebug --no-daemon
+        run: ./gradlew testProdDebugUnitTest testLocalDebugUnitTest assembleProdDebug --no-daemon
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -52,8 +53,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/*.apk
+          name: app-prod-debug
+          path: app/build/outputs/apk/prod/debug/*.apk
 
   release:
     name: Release assinado
@@ -87,11 +88,11 @@ jobs:
           VERSION_CODE: ${{ github.run_number }}
         run: |
           export VERSION_NAME="${VERSION_NAME#v}"
-          ./gradlew assembleRelease bundleRelease --no-daemon
+          ./gradlew assembleProdRelease bundleProdRelease --no-daemon
 
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/bundle/release/*.aab
+            app/build/outputs/apk/prod/release/*.apk
+            app/build/outputs/bundle/prodRelease/*.aab

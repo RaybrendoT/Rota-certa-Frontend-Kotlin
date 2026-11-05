@@ -9,6 +9,15 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+// Push (Firebase Cloud Messaging): o plugin do google-services só entra com o
+// app/google-services.json presente (baixado do console do Firebase, fora do git).
+// Sem ele o app compila e roda normalmente, só sem notificações push.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.warn("app/google-services.json não encontrado: build sem notificações push.")
+}
+
 // URLs e chaves vêm de local.properties (ou variáveis de ambiente), nunca do código.
 val localProperties = Properties().apply {
     val file = rootProject.file("local.properties")
@@ -152,6 +161,9 @@ dependencies {
     implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)

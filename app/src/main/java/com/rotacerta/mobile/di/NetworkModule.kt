@@ -8,6 +8,7 @@ import com.rotacerta.mobile.data.api.AuthApi
 import com.rotacerta.mobile.data.api.CollaboratorApi
 import com.rotacerta.mobile.data.api.DriverApi
 import com.rotacerta.mobile.data.api.NotificationApi
+import com.rotacerta.mobile.data.api.PushApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -84,4 +85,8 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAddressApi(retrofit: Retrofit): AddressApi = retrofit.create(AddressApi::class.java)
+
+    @Provides
+    @Singleton
+    fun providePushApi(retrofit: Retrofit): PushApi = retrofit.create(PushApi::class.java)
 }

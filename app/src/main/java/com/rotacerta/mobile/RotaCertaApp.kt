@@ -2,6 +2,7 @@ package com.rotacerta.mobile
 
 import android.app.Application
 import com.rotacerta.mobile.core.notification.SystemNotifier
+import com.rotacerta.mobile.core.push.PushTokenManager
 import com.rotacerta.mobile.core.realtime.RealtimeClient
 import com.rotacerta.mobile.core.util.AppForegroundTracker
 import com.rotacerta.mobile.data.repository.NotificationRepository
@@ -19,11 +20,13 @@ class RotaCertaApp : Application() {
     // Injetados só para existirem desde o início: escutam o WebSocket e a sessão.
     @Inject lateinit var notificationRepository: NotificationRepository
     @Inject lateinit var trackingController: TrackingController
+    @Inject lateinit var pushTokenManager: PushTokenManager
 
     override fun onCreate() {
         super.onCreate()
         systemNotifier.createChannels()
         foregroundTracker.register()
         realtimeClient.start()
+        pushTokenManager.start()
     }
 }

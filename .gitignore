@@ -16,3 +16,6 @@ local.properties
 # Chave de assinatura do release
 *.jks
 *.keystore
+
+# Configuração do Firebase (baixe do console; não versione)
+app/google-services.json

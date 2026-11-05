@@ -12,3 +12,7 @@ local.properties
 /app/release
 *.hprof
 .kotlin/
+
+# Chave de assinatura do release
+*.jks
+*.keystore

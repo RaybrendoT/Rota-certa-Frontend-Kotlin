@@ -10,3 +10,10 @@ API_BASE_URL=http://10.0.2.2:8000/api/
 
 # Chave do Google Maps (Maps SDK for Android no Google Cloud Console). Sem ela o mapa fica cinza.
 MAPS_API_KEY=SUA_CHAVE_AQUI
+
+# Assinatura do release (opcional localmente; no CI vem dos secrets). Caminho relativo à pasta app/.
+# Nunca versione o keystore nem as senhas.
+# RELEASE_STORE_FILE=../release.jks
+# RELEASE_STORE_PASSWORD=
+# RELEASE_KEY_ALIAS=rotacerta
+# RELEASE_KEY_PASSWORD=

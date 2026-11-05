@@ -34,8 +34,9 @@ android {
         applicationId = "com.rotacerta.mobile"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "2.0.0"
+        // No CI de release vêm da tag (v2.1.0 → 2.1.0) e do número da execução.
+        versionCode = readLocalProperty("VERSION_CODE", "2").toInt()
+        versionName = readLocalProperty("VERSION_NAME", "2.0.0")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -44,8 +45,23 @@ android {
         manifestPlaceholders["MAPS_API_KEY"] = readLocalProperty("MAPS_API_KEY", "")
     }
 
+    // Assinatura do release: keystore e senhas vêm de local.properties ou do CI (secrets); sem elas,
+    // o release sai sem assinatura e o debug continua com a chave de debug.
+    val releaseStoreFile = readLocalProperty("RELEASE_STORE_FILE", "")
+    signingConfigs {
+        if (releaseStoreFile.isNotBlank()) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = readLocalProperty("RELEASE_STORE_PASSWORD", "")
+                keyAlias = readLocalProperty("RELEASE_KEY_ALIAS", "")
+                keyPassword = readLocalProperty("RELEASE_KEY_PASSWORD", "")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (releaseStoreFile.isNotBlank()) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

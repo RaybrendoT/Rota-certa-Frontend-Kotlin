@@ -42,3 +42,10 @@ object NotificationKind {
     const val PICKUP_CHANGED = "pickup_changed"
     const val ROUTE_UPDATED = "route_updated"
 }
+
+/** POST /me/devices/ e /me/devices/unregister/ (notificações push). */
+@Serializable
+data class PushDeviceRequest(val token: String, val platform: String = "android")
+
+@Serializable
+data class PushTokenRequest(val token: String)

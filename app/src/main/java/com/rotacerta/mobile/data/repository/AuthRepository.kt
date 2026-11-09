@@ -3,6 +3,7 @@ package com.rotacerta.mobile.data.repository
 import com.rotacerta.mobile.core.network.ApiResult
 import com.rotacerta.mobile.core.network.apiCall
 import com.rotacerta.mobile.core.network.map
+import com.rotacerta.mobile.core.push.PushTokenManager
 import com.rotacerta.mobile.core.session.SessionStore
 import com.rotacerta.mobile.data.api.AuthApi
 import com.rotacerta.mobile.data.dto.ChangePasswordRequest
@@ -17,6 +18,7 @@ import javax.inject.Singleton
 class AuthRepository @Inject constructor(
     private val authApi: AuthApi,
     private val sessionStore: SessionStore,
+    private val pushTokenManager: PushTokenManager,
 ) {
     /** Login de motorista ou colaborador; a sessão salva decide para qual área o app vai. */
     suspend fun login(email: String, password: String): ApiResult<Unit> =
@@ -51,6 +53,12 @@ class AuthRepository @Inject constructor(
         )
     }.map { }
 
-    /** Encerra a sessão local; WebSocket, rastreamento e caches reagem à sessão nula. */
-    suspend fun logout() = sessionStore.clear()
+    /**
+     * Encerra a sessão local; WebSocket, rastreamento e caches reagem à sessão nula.
+     * Antes, tira o aparelho do push (precisa do JWT ainda válido).
+     */
+    suspend fun logout() {
+        pushTokenManager.unregister()
+        sessionStore.clear()
+    }
 }

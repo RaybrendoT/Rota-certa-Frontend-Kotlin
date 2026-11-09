@@ -20,6 +20,8 @@ import com.rotacerta.mobile.data.dto.PasswordResetIdentifier
 import com.rotacerta.mobile.data.dto.PasswordResetRequestResponse
 import com.rotacerta.mobile.data.dto.PasswordResetVerifyPayload
 import com.rotacerta.mobile.data.dto.PasswordResetVerifyResponse
+import com.rotacerta.mobile.data.dto.PushDeviceRequest
+import com.rotacerta.mobile.data.dto.PushTokenRequest
 import com.rotacerta.mobile.data.dto.ReadAllResponse
 import com.rotacerta.mobile.data.dto.RouteEventCreateRequest
 import com.rotacerta.mobile.data.dto.RouteEventDto
@@ -131,4 +133,13 @@ interface NotificationApi {
 
     @POST("notifications/read-all/")
     suspend fun markAllRead(): Response<ReadAllResponse>
+}
+
+/** Aparelho que recebe as notificações push (token do Firebase). */
+interface PushApi {
+    @POST("me/devices/")
+    suspend fun register(@Body body: PushDeviceRequest): Response<Unit>
+
+    @POST("me/devices/unregister/")
+    suspend fun unregister(@Body body: PushTokenRequest): Response<Unit>
 }
